@@ -4,66 +4,131 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Site Bloqué | GoatFocus</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --primary: #6366F1;
+      --primary-light: #EEF2FF;
+      --success: #10B981;
+      --text: #1F2937;
+      --text-secondary: #6B7280;
+      --background: #F9FAFB;
+      --card: #FFFFFF;
+      --border: #E5E7EB;
+      --radius: 16px;
+    }
+    
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
     
     body {
-      background-color: #f8f9fa;
+      background: linear-gradient(135deg, var(--primary-light), #F9FAFB);
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
       height: 100vh;
-      color: #4a5568;
+      color: var(--text);
       text-align: center;
     }
     
     .container {
       max-width: 600px;
-      padding: 40px;
-      background-color: white;
-      border-radius: 10px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      animation: fadeIn 0.6s ease-in-out;
+      padding: 50px;
+      background-color: var(--card);
+      border-radius: var(--radius);
+      box-shadow: 0 10px 25px rgba(99, 102, 241, 0.15);
+      animation: fadeIn 0.8s ease-in-out, float 3s ease-in-out infinite alternate;
+      border: 1px solid rgba(99, 102, 241, 0.1);
     }
     
     h1 {
-      font-size: 28px;
-      color: #2d3748;
-      margin-bottom: 16px;
+      font-size: 32px;
+      color: var(--primary);
+      margin-bottom: 20px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
     }
     
     p {
       font-size: 18px;
-      line-height: 1.5;
-      margin-bottom: 20px;
+      line-height: 1.6;
+      margin-bottom: 25px;
+      color: var(--text-secondary);
     }
     
     .message {
       font-size: 20px;
-      font-weight: bold;
-      margin-top: 20px;
-      color: #4299e1;
+      font-weight: 600;
+      margin-top: 25px;
+      color: var(--success);
+      padding: 15px 20px;
+      background-color: rgba(16, 185, 129, 0.1);
+      border-radius: 12px;
+      display: inline-block;
     }
     
     .goat-emoji {
-      font-size: 64px;
-      margin-bottom: 20px;
+      font-size: 72px;
+      margin-bottom: 25px;
+      animation: bounce 2s infinite alternate;
+      display: inline-block;
+    }
+    
+    .motivation {
+      margin-top: 30px;
+      font-size: 16px;
+      color: var(--text-secondary);
+      font-style: italic;
     }
     
     @keyframes fadeIn {
       from {
         opacity: 0;
-        transform: translateY(-20px);
+        transform: translateY(-30px);
       }
       to {
         opacity: 1;
         transform: translateY(0);
+      }
+    }
+    
+    @keyframes float {
+      0% {
+        transform: translateY(0);
+      }
+      100% {
+        transform: translateY(-10px);
+      }
+    }
+    
+    @keyframes bounce {
+      0% {
+        transform: translateY(0);
+      }
+      100% {
+        transform: translateY(-15px);
+      }
+    }
+    
+    @media (max-width: 600px) {
+      .container {
+        width: 90%;
+        padding: 30px;
+      }
+      
+      h1 {
+        font-size: 26px;
+      }
+      
+      p {
+        font-size: 16px;
       }
     }
   </style>
@@ -71,9 +136,10 @@
 <body>
   <div class="container">
     <div class="goat-emoji">🐐</div>
-    <h1>Ce site est bloqué.</h1>
+    <h1>Ce site est bloqué</h1>
     <p>Continue de te focaliser sur le travail. Tu peux le faire, allez.</p>
-    <div class="message">Reste déterminé(e) comme un GoatFocus.</div>
+    <div class="message">Reste déterminé(e) comme un GoatFocus !</div>
+    <p class="motivation">"La différence entre l'ordinaire et l'extraordinaire, c'est ce petit plus."</p>
   </div>
 </body>
 </html>
