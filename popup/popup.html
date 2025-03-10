@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>GoatFocus - Bloquer les sites distractifs</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>GoatFocus</h1>
+      <button id="add-current-site" class="add-current-site" title="Ajouter le site actuel">+</button>
+    </div>
+    
+    <section class="sites-section">
+      <h2>Sites bloqués</h2>
+      <div class="site-input-container">
+        <input type="text" id="new-site" placeholder="Entrez un domaine (ex: facebook.com)">
+        <button id="add-site">+</button>
+      </div>
+      <ul id="sites-list" class="sites-list"></ul>
+    </section>
+    
+    <section class="schedule-section">
+      <h2>Planning de blocage</h2>
+      
+      <div class="time-groups-container" id="time-groups-container">
+        <!-- Les groupes de temps seront affichés ici -->
+      </div>
+      
+      <div class="time-group-editor" id="time-group-editor">
+        <h3 id="editor-title">Ajouter une nouvelle plage horaire</h3>
+        <div class="days-selector">
+          <div class="day-checkbox">
+            <input type="checkbox" id="day-monday" value="monday">
+            <label for="day-monday">Lun</label>
+          </div>
+          <div class="day-checkbox">
+            <input type="checkbox" id="day-tuesday" value="tuesday">
+            <label for="day-tuesday">Mar</label>
+          </div>
+          <div class="day-checkbox">
+            <input type="checkbox" id="day-wednesday" value="wednesday">
+            <label for="day-wednesday">Mer</label>
+          </div>
+          <div class="day-checkbox">
+            <input type="checkbox" id="day-thursday" value="thursday">
+            <label for="day-thursday">Jeu</label>
+          </div>
+          <div class="day-checkbox">
+            <input type="checkbox" id="day-friday" value="friday">
+            <label for="day-friday">Ven</label>
+          </div>
+          <div class="day-checkbox">
+            <input type="checkbox" id="day-saturday" value="saturday">
+            <label for="day-saturday">Sam</label>
+          </div>
+          <div class="day-checkbox">
+            <input type="checkbox" id="day-sunday" value="sunday">
+            <label for="day-sunday">Dim</label>
+          </div>
+        </div>
+        
+        <div class="time-inputs-container">
+          <div class="time-inputs">
+            <input type="time" id="new-start-time" class="time-input">
+            <span>à</span>
+            <input type="time" id="new-end-time" class="time-input">
+          </div>
+        </div>
+        
+        <div class="editor-buttons-container">
+          <div class="editor-buttons">
+            <button id="add-time-group">Ajouter</button>
+            <button id="update-time-group" style="display: none;">Mettre à jour</button>
+            <button id="cancel-edit" style="display: none;">Annuler</button>
+          </div>
+        </div>
+        
+        <input type="hidden" id="edit-group-id" value="">
+      </div>
+    </section>
+    
+    <div class="footer">
+      <button id="save-button">Enregistrer</button>
+    </div>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>

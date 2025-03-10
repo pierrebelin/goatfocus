@@ -1,0 +1,307 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+  background-color: #f8f9fa;
+  color: #333;
+}
+
+.container {
+  width: 350px;
+  padding: 16px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+h1 {
+  color: #4a5568;
+  margin: 0;
+}
+
+.add-current-site {
+  background-color: #4299e1;
+  color: white;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  font-size: 22px;
+  line-height: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.add-current-site:hover {
+  background-color: #3182ce;
+}
+
+h2 {
+  font-size: 18px;
+  margin-bottom: 12px;
+  color: #2d3748;
+}
+
+section {
+  margin-bottom: 20px;
+  padding: 16px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Style pour la section des sites */
+.site-input-container {
+  display: flex;
+  margin-bottom: 12px;
+  justify-content: center;
+}
+
+#new-site {
+  width: 80%;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px 0 0 4px;
+  outline: none;
+}
+
+#add-site {
+  background-color: #4299e1;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 0 4px 4px 0;
+  cursor: pointer;
+}
+
+#add-site:hover {
+  background-color: #3182ce;
+}
+
+.sites-list {
+  list-style-type: none;
+  max-height: 150px;
+  height: 130px; /* Hauteur pour environ 5 éléments */
+  overflow-y: auto;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  padding: 4px 8px;
+  margin-top: 12px;
+}
+
+.site-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+  height: 36px; /* Hauteur fixe pour assurer un maximum de ~5 éléments visibles */
+}
+
+.site-item:last-child {
+  border-bottom: none;
+}
+
+.remove-site {
+  color: #e53e3e;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+/* Style pour la section de planning */
+h3 {
+  font-size: 16px;
+  margin: 16px 0 12px;
+  color: #4a5568;
+}
+
+.time-groups-container {
+  margin-bottom: 20px;
+}
+
+.time-group {
+  background-color: #f7fafc;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.time-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.time-label {
+  font-weight: bold;
+  font-size: 15px;
+}
+
+.days-badges {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  gap: 4px;
+}
+
+.day-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+  background-color: #bee3f8;
+  color: #2b6cb0;
+}
+
+.days-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.day-checkbox {
+  display: flex;
+  align-items: center;
+  margin-right: 4px;
+}
+
+.day-checkbox input[type="checkbox"] {
+  margin-right: 4px;
+}
+
+.time-inputs-container {
+  margin-top: 16px;
+}
+
+.time-inputs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.time-input {
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  width: 100px;
+}
+
+.time-inputs span {
+  margin: 0 8px;
+}
+
+.editor-buttons-container {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.editor-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+#add-time-group, #update-time-group {
+  background-color: #4299e1;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+#add-time-group:hover, #update-time-group:hover {
+  background-color: #3182ce;
+}
+
+#cancel-edit {
+  background-color: #e2e8f0;
+  color: #4a5568;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+#cancel-edit:hover {
+  background-color: #cbd5e0;
+}
+
+.time-group {
+  position: relative;
+}
+
+.edit-time-group {
+  position: absolute;
+  top: 12px;
+  right: 40px;
+  color: #4299e1;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.remove-time-group {
+  color: #e53e3e;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+/* Footer */
+.footer {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+#save-button {
+  background-color: #48bb78;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+#save-button:hover {
+  background-color: #38a169;
+}
+
+/* Scrollbar style */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
