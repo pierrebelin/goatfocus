@@ -39,7 +39,6 @@ const updateTimeGroupButton = document.getElementById('update-time-group');
 const cancelEditButton = document.getElementById('cancel-edit');
 const editorTitleElement = document.getElementById('editor-title');
 const editGroupIdInput = document.getElementById('edit-group-id');
-const saveButton = document.getElementById('save-button');
 
 // Jours de la semaine
 const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -132,6 +131,9 @@ function renderSitesList() {
     removeButton.addEventListener('click', () => {
       sites.splice(index, 1);
       renderSitesList();
+      
+      // Enregistrer automatiquement après suppression
+      saveData();
     });
     
     li.appendChild(siteText);
@@ -173,6 +175,9 @@ function renderTimeGroups() {
     removeButton.addEventListener('click', () => {
       timeGroups.splice(index, 1);
       renderTimeGroups();
+      
+      // Enregistrer automatiquement après suppression
+      saveData();
     });
     
     headerDiv.appendChild(timeLabel);
@@ -270,6 +275,9 @@ function updateTimeGroup() {
       
       // Mettre à jour l'affichage
       renderTimeGroups();
+      
+      // Enregistrer automatiquement
+      saveData();
     }
   } else {
     alert("Veuillez sélectionner au moins un jour et définir les heures de début et de fin.");
@@ -310,6 +318,9 @@ function addSite() {
     sites.push(siteValue);
     newSiteInput.value = '';
     renderSitesList();
+    
+    // Enregistrer automatiquement
+    saveData();
   }
 }
 
@@ -355,6 +366,9 @@ function addTimeGroup() {
     });
     
     renderTimeGroups();
+    
+    // Enregistrer automatiquement
+    saveData();
   } else {
     alert("Veuillez sélectionner au moins un jour et définir les heures de début et de fin.");
   }
@@ -397,16 +411,20 @@ function saveData() {
   const schedule = convertToScheduleFormat();
   
   chrome.storage.local.set({ sites, timeGroups, schedule }, () => {
-    // Afficher un message de confirmation temporaire
-    const saveStatus = document.createElement('div');
-    saveStatus.textContent = 'Configuration sauvegardée !';
-    saveStatus.style.cssText = 'position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background-color: #48bb78; color: white; padding: 8px 16px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);';
+    // Afficher un petit indicateur visuel temporaire
+    const saveIndicator = document.createElement('div');
+    saveIndicator.classList.add('save-indicator');
+    saveIndicator.innerHTML = '<div class="save-dot"></div>';
     
-    document.body.appendChild(saveStatus);
+    document.body.appendChild(saveIndicator);
     
     setTimeout(() => {
-      document.body.removeChild(saveStatus);
-    }, 2000);
+      // Animation de disparition
+      saveIndicator.style.opacity = '0';
+      setTimeout(() => {
+        document.body.removeChild(saveIndicator);
+      }, 300);
+    }, 700);
     
     // Vérifier l'onglet actuel après la sauvegarde
     checkCurrentTab(schedule);
@@ -555,7 +573,7 @@ updateTimeGroupButton.addEventListener('click', updateTimeGroup);
 
 cancelEditButton.addEventListener('click', resetTimeGroupEditor);
 
-saveButton.addEventListener('click', saveData);
+// Le bouton saveButton n'est plus nécessaire car l'enregistrement est automatique
 
 // Définir des valeurs par défaut pour les champs d'heure
 newStartTimeInput.value = '09:00';
