@@ -13,6 +13,9 @@ body {
 .container {
   width: 350px;
   padding: 16px;
+  padding-bottom: 0; /* Permettre à l'espace supplémentaire de gérer le padding bottom */
+  max-height: 600px;
+  overflow-y: auto;
 }
 
 .header {
@@ -269,8 +272,16 @@ h3 {
 
 /* Footer */
 .footer {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
   display: flex;
   justify-content: center;
+  padding: 12px 0;
+  background-color: white;
+  box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.05);
+  z-index: 10;
   margin-top: 16px;
 }
 
@@ -278,10 +289,13 @@ h3 {
   background-color: #48bb78;
   color: white;
   border: none;
-  padding: 8px 16px;
+  padding: 10px 24px;
   border-radius: 4px;
   cursor: pointer;
   font-weight: bold;
+  font-size: 15px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  min-width: 160px;
 }
 
 #save-button:hover {

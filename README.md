@@ -1,13 +1,16 @@
 # GoatFocus - Extension Chrome de blocage de sites web
 
-Une extension Chrome simple qui vous permet de bloquer l'accès à certains sites web selon un planning personnalisé de jours et d'heures.
+Une extension Chrome simple qui vous permet de bloquer l'accès à certains sites web selon un planning personnalisé de jours et d'heures. GoatFocus vous aide à rester concentré sur votre travail en éliminant les distractions.
 
 ## Fonctionnalités
 
 - Bloquer l'accès à une liste de sites web configurable
-- Définir des périodes de blocage par jour de la semaine
-- Configurer plusieurs plages horaires pour chaque jour
-- Fonctionne en arrière-plan sans notifications
+- Ajouter rapidement le site actuel à la liste des sites bloqués avec un seul clic
+- Définir des plages horaires de blocage qui s'appliquent à plusieurs jours simultanément
+- Modifier facilement les plages horaires existantes
+- Page de blocage motivante qui vous encourage à rester concentré
+- Vérification des sites lors du changement d'onglet
+- Interface intuitive avec un bouton "Enregistrer" toujours accessible
 
 ## Installation
 
@@ -20,14 +23,28 @@ Une extension Chrome simple qui vous permet de bloquer l'accès à certains site
 ## Utilisation
 
 1. Cliquez sur l'icône de l'extension dans la barre d'outils de Chrome
-2. Ajoutez les sites web que vous souhaitez bloquer
-3. Configurez les jours et les plages horaires pendant lesquels vous souhaitez que le blocage soit actif
-4. Cliquez sur "Enregistrer" pour appliquer les modifications
+2. Ajoutez les sites web que vous souhaitez bloquer:
+   - Saisissez manuellement un domaine et cliquez sur "+"
+   - OU cliquez sur le bouton "+" dans l'en-tête pour ajouter le site actuellement ouvert
+3. Créez des plages horaires de blocage:
+   - Sélectionnez les jours de la semaine concernés
+   - Définissez les heures de début et de fin
+   - Cliquez sur "Ajouter"
+4. Cliquez sur "Enregistrer" pour appliquer les changements
+
+Les sites bloqués seront automatiquement redirigés vers une page d'encouragement pendant les heures de blocage définies.
+
+## Fonctionnalités avancées
+
+- **Modification des plages**: Cliquez sur l'icône crayon à côté d'une plage horaire pour la modifier
+- **Suppression**: Utilisez les boutons "×" pour supprimer des sites ou des plages horaires
+- **Vérification en temps réel**: Les sites sont vérifiés lors des changements d'onglets et après la sauvegarde
 
 ## Structure des fichiers
 
 - `manifest.json` : Configuration de l'extension
 - `background.js` : Script principal (logique de blocage)
+- `blocked.html` : Page de redirection pour les sites bloqués
 - `popup/` : Contient les fichiers pour l'interface utilisateur
   - `popup.html` : Structure HTML de l'interface
   - `popup.css` : Styles CSS pour l'interface
