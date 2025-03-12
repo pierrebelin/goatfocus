@@ -1,4 +1,33 @@
-// Structure initiale des données
+// Fonctions utilitaires intégrées directement dans le background.js
+function getCurrentDateKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+}
+
+function calculateTotalUsageTime() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['dailyUsage', 'maxDailyAccess'], (data) => {
+      const maxDailyAccess = data.maxDailyAccess;
+      const dateKey = getCurrentDateKey();
+      const todayUsage = data.dailyUsage && data.dailyUsage[dateKey] ? data.dailyUsage[dateKey] : {};
+      
+      let totalSeconds = 0;
+      for (const siteDomain in todayUsage) {
+        totalSeconds += todayUsage[siteDomain];
+      }
+      
+      const minutes = Math.floor(totalSeconds / 60);
+      
+      resolve({
+        totalSeconds,
+        minutes,
+        maxDailyAccess,
+        isLimitExceeded: maxDailyAccess !== null && minutes >= maxDailyAccess
+      });
+    });
+  });
+}
+
 const defaultData = {
   sites: [],
   schedule: {
@@ -9,14 +38,21 @@ const defaultData = {
     friday: [],
     saturday: [],
     sunday: []
-  }
+  },
+  maxDailyAccess: null,
+  dailyUsage: {}
 };
 
-// Initialiser les données de stockage si elles n'existent pas
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.storage.local.get(['sites', 'schedule'], (result) => {
+  chrome.storage.local.get(['sites', 'schedule', 'maxDailyAccess', 'dailyUsage'], (result) => {
     if (!result.sites || !result.schedule) {
       chrome.storage.local.set(defaultData);
+    }
+    if (result.maxDailyAccess === undefined) {
+      chrome.storage.local.set({ maxDailyAccess: null });
+    }
+    if (!result.dailyUsage) {
+      chrome.storage.local.set({ dailyUsage: {} });
     }
   });
 });
@@ -68,21 +104,82 @@ function isBlockedTime(schedule) {
   });
 }
 
-// Fonction pour vérifier si un onglet doit être bloqué
-function checkAndBlockTab(tabId, url) {
-  // Ne pas bloquer notre propre page de blocage ou les URL spéciales de Chrome
+function updateUsageTime(domain) {
+  const dateKey = getCurrentDateKey();
+  
+  chrome.storage.local.get(['dailyUsage'], (data) => {
+    const dailyUsage = data.dailyUsage || {};
+    
+    if (!dailyUsage[dateKey]) {
+      dailyUsage[dateKey] = {};
+    }
+    
+    if (!dailyUsage[dateKey][domain]) {
+      dailyUsage[dateKey][domain] = 0;
+    }
+    
+    dailyUsage[dateKey][domain] += 1;
+    
+    chrome.storage.local.set({ dailyUsage });
+  });
+}
+
+function getDomainTime(domain, callback) {
+  const dateKey = getCurrentDateKey();
+  
+  chrome.storage.local.get(['dailyUsage'], (data) => {
+    const dailyUsage = data.dailyUsage || {};
+    const todayUsage = dailyUsage[dateKey] || {};
+    const timeSpent = todayUsage[domain] || 0;
+    
+    callback(timeSpent);
+  });
+}
+
+function getTotalTimeForToday(callback) {
+  const dateKey = getCurrentDateKey();
+  
+  chrome.storage.local.get(['dailyUsage'], (data) => {
+    const dailyUsage = data.dailyUsage || {};
+    const todayUsage = dailyUsage[dateKey] || {};
+    
+    let totalTime = 0;
+    for (const domain in todayUsage) {
+      totalTime += todayUsage[domain];
+    }
+    
+    callback(totalTime);
+  });
+}
+
+async function checkAndBlockTab(tabId, url) {
   if (!url || url.startsWith('chrome') || url.includes(chrome.runtime.id)) return;
   
-  chrome.storage.local.get(['sites', 'schedule'], (data) => {
-    // Vérifier si les données existent
-    if (!data.sites || !data.schedule) return;
+  try {
+    const urlObj = new URL(url);
+    const domain = urlObj.hostname;
     
-    // Vérifier si l'URL est bloquée et si nous sommes dans une période de blocage
-    if (isBlockedSite(url, data.sites) && isBlockedTime(data.schedule)) {
-      // Bloquer la navigation en redirigeant vers notre page de blocage personnalisée
-      chrome.tabs.update(tabId, { url: chrome.runtime.getURL('blocked.html') });
-    }
-  });
+    chrome.storage.local.get(['sites', 'schedule'], async (data) => {
+      if (!data.sites || !data.schedule) return;
+      
+      const isBlocked = isBlockedSite(url, data.sites);
+      const isInBlockedTime = isBlockedTime(data.schedule);
+      
+      if (isBlocked && isInBlockedTime) {
+        // Utiliser la fonction centralisée pour vérifier le temps d'utilisation
+        const usageInfo = await calculateTotalUsageTime();
+        
+        // Bloquer si aucune limite n'est définie ou si la limite est dépassée
+        if (usageInfo.maxDailyAccess === null || usageInfo.isLimitExceeded) {
+          chrome.tabs.update(tabId, { url: chrome.runtime.getURL(`blocked.html?domain=${domain}`) });
+        }
+        // Si le temps n'est pas dépassé, on laisse l'utilisateur accéder au site
+        // Le temps continuera d'être suivi par startPeriodicCheck
+      }
+    });
+  } catch (e) {
+    console.error(e);
+  }
 }
 
 // Écouteur d'événements pour la navigation web
@@ -115,3 +212,47 @@ chrome.tabs.onActivated.addListener((activeInfo) => {
     }
   });
 });
+
+function startPeriodicCheck() {
+  setInterval(async () => {
+    chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+      if (tabs.length > 0 && tabs[0].url) {
+        try {
+          const urlObj = new URL(tabs[0].url);
+          const domain = urlObj.hostname;
+          
+          // Ne pas vérifier les pages internes de l'extension ou du navigateur
+          if (tabs[0].url.startsWith('chrome') || tabs[0].url.includes(chrome.runtime.id)) {
+            return;
+          }
+          
+          chrome.storage.local.get(['sites', 'schedule'], async (data) => {
+            if (!data.sites || !data.schedule) return;
+            
+            const isBlockedSiteResult = isBlockedSite(tabs[0].url, data.sites);
+            const isInBlockedTime = isBlockedTime(data.schedule);
+            
+            if (isBlockedSiteResult && isInBlockedTime) {
+              // Toujours incrémenter l'utilisation si on est sur un site bloqué pendant une période de blocage
+              updateUsageTime(domain);
+              
+              // Ensuite, vérifier si le temps est dépassé pour bloquer le site
+              const usageInfo = await calculateTotalUsageTime();
+              
+              // Si le temps est écoulé et que nous ne sommes pas déjà sur la page de blocage, bloquer immédiatement
+              if (usageInfo.isLimitExceeded && !tabs[0].url.includes('blocked.html')) {
+                chrome.tabs.update(tabs[0].id, { 
+                  url: chrome.runtime.getURL(`blocked.html?domain=${domain}`) 
+                });
+              }
+            }
+          });
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    });
+  }, 1000); // Mettre à jour l'utilisation chaque seconde
+}
+
+startPeriodicCheck();

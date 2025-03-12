@@ -203,6 +203,62 @@ section {
 }
 
 /* Style pour la section de planning */
+.daily-access-section {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: var(--primary-light);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.daily-access-section label {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+}
+
+#max-daily-access {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  width: 100%;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+#max-daily-access:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.usage-display {
+  margin-top: 8px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  padding: 10px;
+  background-color: white;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.progress-bar {
+  height: 8px;
+  background-color: #E5E7EB;
+  border-radius: 4px;
+  margin-top: 6px;
+  overflow: hidden;
+}
+
+.progress {
+  height: 100%;
+  background-color: var(--success);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
 h3 {
   font-size: 16px;
   margin: 16px 0 14px;
@@ -394,41 +450,69 @@ h3 {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 16px;
-  width: 30px;
-  height: 30px;
+  font-size: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  border-radius: 4px;
   transition: all 0.2s ease;
   margin-right: 6px;
+  padding: 6px 10px;
+}
+
+.edit-time-group svg {
+  margin-right: 4px;
 }
 
 .edit-time-group:hover {
   background-color: var(--primary-light);
-  transform: scale(1.1);
 }
 
+.delete-time-group {
+  color: var(--danger);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  padding: 6px 10px;
+}
+
+.delete-time-group svg {
+  margin-right: 4px;
+}
+
+.delete-time-group:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--danger-hover);
+}
+
+/* Styles pour la compatibilité avec l'ancien nom de classe */
 .remove-time-group {
   color: var(--danger);
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 16px;
-  width: 30px;
-  height: 30px;
+  font-size: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  border-radius: 4px;
   transition: all 0.2s ease;
+  padding: 6px 10px;
+}
+
+.remove-time-group svg {
+  margin-right: 4px;
 }
 
 .remove-time-group:hover {
   background-color: rgba(239, 68, 68, 0.1);
   color: var(--danger-hover);
-  transform: scale(1.1);
 }
 
 /* Indicateur de sauvegarde automatique */
@@ -482,4 +566,27 @@ h3 {
   background: #9CA3AF;
   border: 2px solid transparent;
   background-clip: content-box;
+}
+
+.time-group-info {
+  margin-bottom: 10px;
+}
+
+.time-group-days {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.time-group-time {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.time-group-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
 }

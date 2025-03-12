@@ -1,381 +1,53 @@
-// Structure initiale des données
-const defaultData = {
-  sites: [],
-  timeGroups: []
-};
-
-// Noms des jours pour l'affichage
-const dayNames = {
-  monday: 'Lundi',
-  tuesday: 'Mardi',
-  wednesday: 'Mercredi',
-  thursday: 'Jeudi',
-  friday: 'Vendredi',
-  saturday: 'Samedi',
-  sunday: 'Dimanche'
-};
-
-// Noms courts des jours pour l'affichage
-const shortDayNames = {
-  monday: 'Lun',
-  tuesday: 'Mar',
-  wednesday: 'Mer',
-  thursday: 'Jeu',
-  friday: 'Ven',
-  saturday: 'Sam',
-  sunday: 'Dim'
-};
-
-// Éléments DOM
-const newSiteInput = document.getElementById('new-site');
-const addSiteButton = document.getElementById('add-site');
-const addCurrentSiteButton = document.getElementById('add-current-site');
-const sitesList = document.getElementById('sites-list');
-const timeGroupsContainer = document.getElementById('time-groups-container');
-const newStartTimeInput = document.getElementById('new-start-time');
-const newEndTimeInput = document.getElementById('new-end-time');
-const addTimeGroupButton = document.getElementById('add-time-group');
-const updateTimeGroupButton = document.getElementById('update-time-group');
-const cancelEditButton = document.getElementById('cancel-edit');
-const editorTitleElement = document.getElementById('editor-title');
-const editGroupIdInput = document.getElementById('edit-group-id');
-
-// Jours de la semaine
-const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-
-// Variables pour stocker les données
-let sites = [];
-let timeGroups = [];
-
-// Charger les données sauvegardées
-function loadData() {
-  chrome.storage.local.get(['sites', 'timeGroups', 'schedule'], (result) => {
-    if (result.sites) {
-      sites = result.sites;
-    } else {
-      sites = defaultData.sites;
-    }
-    
-    // Migration des anciennes données si nécessaire
-    if (result.schedule && !result.timeGroups) {
-      timeGroups = migrateOldScheduleFormat(result.schedule);
-    } else if (result.timeGroups) {
-      timeGroups = result.timeGroups;
-    } else {
-      timeGroups = defaultData.timeGroups;
-    }
-    
-    // Mettre à jour l'interface
-    renderSitesList();
-    renderTimeGroups();
-  });
+// Fonctions utilitaires
+function getCurrentDateKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
 }
 
-// Migrer l'ancien format de planning vers le nouveau format
-function migrateOldScheduleFormat(oldSchedule) {
-  const newTimeGroups = [];
-  
-  // Collecter toutes les plages horaires uniques
-  const uniqueTimeRanges = new Map();
-  
-  for (const day in oldSchedule) {
-    if (oldSchedule.hasOwnProperty(day)) {
-      oldSchedule[day].forEach(timeRange => {
-        const key = `${timeRange.start}-${timeRange.end}`;
-        
-        if (!uniqueTimeRanges.has(key)) {
-          uniqueTimeRanges.set(key, {
-            startTime: timeRange.start,
-            endTime: timeRange.end,
-            days: [day]
-          });
-        } else {
-          uniqueTimeRanges.get(key).days.push(day);
-        }
+function calculateTotalUsageTime() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['dailyUsage', 'maxDailyAccess'], (data) => {
+      const maxDailyAccess = data.maxDailyAccess;
+      const dateKey = getCurrentDateKey();
+      const todayUsage = data.dailyUsage && data.dailyUsage[dateKey] ? data.dailyUsage[dateKey] : {};
+      
+      let totalSeconds = 0;
+      for (const siteDomain in todayUsage) {
+        totalSeconds += todayUsage[siteDomain];
+      }
+      
+      const minutes = Math.floor(totalSeconds / 60);
+      
+      resolve({
+        totalSeconds,
+        minutes,
+        maxDailyAccess,
+        isLimitExceeded: maxDailyAccess !== null && minutes >= maxDailyAccess
       });
-    }
-  }
-  
-  // Convertir en tableau
-  uniqueTimeRanges.forEach(group => {
-    newTimeGroups.push({
-      id: generateTimeGroupId(),
-      startTime: group.startTime,
-      endTime: group.endTime,
-      days: group.days
     });
   });
-  
-  return newTimeGroups;
 }
 
-// Générer un ID unique pour un groupe de temps
-function generateTimeGroupId() {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
-}
-
-// Afficher la liste des sites bloqués
-function renderSitesList() {
-  sitesList.innerHTML = '';
-  
-  sites.forEach((site, index) => {
-    const li = document.createElement('li');
-    li.className = 'site-item';
-    
-    const siteText = document.createElement('span');
-    siteText.textContent = site;
-    
-    const removeButton = document.createElement('button');
-    removeButton.className = 'remove-site';
-    removeButton.textContent = '×';
-    removeButton.addEventListener('click', () => {
-      sites.splice(index, 1);
-      renderSitesList();
-      
-      // Enregistrer automatiquement après suppression
-      saveData();
+// Fonction pour charger les données
+function loadData() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['sites', 'timeGroups', 'schedule', 'maxDailyAccess', 'dailyUsage'], (result) => {
+      resolve(result);
     });
-    
-    li.appendChild(siteText);
-    li.appendChild(removeButton);
-    
-    sitesList.appendChild(li);
   });
 }
 
-// Afficher les groupes de temps
-function renderTimeGroups() {
-  timeGroupsContainer.innerHTML = '';
-  
-  timeGroups.forEach((group, index) => {
-    const groupDiv = document.createElement('div');
-    groupDiv.className = 'time-group';
-    groupDiv.dataset.id = group.id;
-    
-    // En-tête du groupe avec l'heure et les boutons d'action
-    const headerDiv = document.createElement('div');
-    headerDiv.className = 'time-group-header';
-    
-    const timeLabel = document.createElement('span');
-    timeLabel.className = 'time-label';
-    timeLabel.textContent = `${group.startTime} - ${group.endTime}`;
-    
-    const editButton = document.createElement('button');
-    editButton.className = 'edit-time-group';
-    editButton.textContent = '✎';
-    editButton.title = 'Modifier cette plage horaire';
-    editButton.addEventListener('click', () => {
-      startEditingTimeGroup(group.id);
+// Fonction pour sauvegarder les données
+function saveData(data) {
+  return new Promise((resolve) => {
+    chrome.storage.local.set(data, () => {
+      resolve();
     });
-    
-    const removeButton = document.createElement('button');
-    removeButton.className = 'remove-time-group';
-    removeButton.textContent = '×';
-    removeButton.title = 'Supprimer cette plage horaire';
-    removeButton.addEventListener('click', () => {
-      timeGroups.splice(index, 1);
-      renderTimeGroups();
-      
-      // Enregistrer automatiquement après suppression
-      saveData();
-    });
-    
-    headerDiv.appendChild(timeLabel);
-    headerDiv.appendChild(editButton);
-    headerDiv.appendChild(removeButton);
-    
-    // Badges pour les jours
-    const daysDiv = document.createElement('div');
-    daysDiv.className = 'days-badges';
-    
-    group.days.forEach(day => {
-      const badge = document.createElement('span');
-      badge.className = 'day-badge';
-      badge.textContent = shortDayNames[day];
-      daysDiv.appendChild(badge);
-    });
-    
-    groupDiv.appendChild(headerDiv);
-    groupDiv.appendChild(daysDiv);
-    
-    timeGroupsContainer.appendChild(groupDiv);
   });
 }
 
-// Passer en mode édition pour une plage horaire existante
-function startEditingTimeGroup(groupId) {
-  // Trouver le groupe par son ID
-  const groupToEdit = timeGroups.find(group => group.id === groupId);
-  
-  if (groupToEdit) {
-    // Mettre à jour le titre
-    editorTitleElement.textContent = 'Modifier la plage horaire';
-    
-    // Définir les valeurs dans le formulaire
-    newStartTimeInput.value = groupToEdit.startTime;
-    newEndTimeInput.value = groupToEdit.endTime;
-    
-    // Cocher les jours correspondants
-    daysOfWeek.forEach(day => {
-      const checkbox = document.getElementById(`day-${day}`);
-      if (checkbox) {
-        checkbox.checked = groupToEdit.days.includes(day);
-      }
-    });
-    
-    // Stocker l'ID du groupe en cours d'édition
-    editGroupIdInput.value = groupId;
-    
-    // Afficher les boutons de mise à jour et d'annulation
-    addTimeGroupButton.style.display = 'none';
-    updateTimeGroupButton.style.display = 'block';
-    cancelEditButton.style.display = 'block';
-    
-    // Faire défiler jusqu'au formulaire d'édition
-    document.getElementById('time-group-editor').scrollIntoView({ behavior: 'smooth' });
-  }
-}
-
-// Mettre à jour une plage horaire existante
-function updateTimeGroup() {
-  const groupId = editGroupIdInput.value;
-  const startTime = newStartTimeInput.value;
-  const endTime = newEndTimeInput.value;
-  
-  // Récupérer les jours sélectionnés
-  const selectedDays = [];
-  daysOfWeek.forEach(day => {
-    const checkbox = document.getElementById(`day-${day}`);
-    if (checkbox && checkbox.checked) {
-      selectedDays.push(day);
-    }
-  });
-  
-  if (startTime && endTime && selectedDays.length > 0) {
-    // Vérifier que l'heure de début est avant l'heure de fin
-    if (startTime >= endTime) {
-      alert("L'heure de début doit être avant l'heure de fin.");
-      return;
-    }
-    
-    // Trouver l'index du groupe à mettre à jour
-    const groupIndex = timeGroups.findIndex(group => group.id === groupId);
-    
-    if (groupIndex !== -1) {
-      // Mettre à jour le groupe
-      timeGroups[groupIndex] = {
-        id: groupId,
-        startTime: startTime,
-        endTime: endTime,
-        days: selectedDays
-      };
-      
-      // Réinitialiser le formulaire
-      resetTimeGroupEditor();
-      
-      // Mettre à jour l'affichage
-      renderTimeGroups();
-      
-      // Enregistrer automatiquement
-      saveData();
-    }
-  } else {
-    alert("Veuillez sélectionner au moins un jour et définir les heures de début et de fin.");
-  }
-}
-
-// Réinitialiser le formulaire d'édition
-function resetTimeGroupEditor() {
-  // Réinitialiser le titre
-  editorTitleElement.textContent = 'Ajouter une nouvelle plage horaire';
-  
-  // Réinitialiser les champs
-  newStartTimeInput.value = '09:00';
-  newEndTimeInput.value = '17:00';
-  
-  // Décocher tous les jours
-  daysOfWeek.forEach(day => {
-    const checkbox = document.getElementById(`day-${day}`);
-    if (checkbox) {
-      checkbox.checked = false;
-    }
-  });
-  
-  // Effacer l'ID du groupe en cours d'édition
-  editGroupIdInput.value = '';
-  
-  // Afficher le bouton d'ajout et masquer les boutons de mise à jour et d'annulation
-  addTimeGroupButton.style.display = 'block';
-  updateTimeGroupButton.style.display = 'none';
-  cancelEditButton.style.display = 'none';
-}
-
-// Ajouter un nouveau site à la liste
-function addSite() {
-  const siteValue = newSiteInput.value.trim();
-  
-  if (siteValue && !sites.includes(siteValue)) {
-    sites.push(siteValue);
-    newSiteInput.value = '';
-    renderSitesList();
-    
-    // Enregistrer automatiquement
-    saveData();
-  }
-}
-
-// Ajouter un nouveau groupe de temps
-function addTimeGroup() {
-  const startTime = newStartTimeInput.value;
-  const endTime = newEndTimeInput.value;
-  
-  // Récupérer les jours sélectionnés
-  const selectedDays = [];
-  daysOfWeek.forEach(day => {
-    const checkbox = document.getElementById(`day-${day}`);
-    if (checkbox && checkbox.checked) {
-      selectedDays.push(day);
-    }
-  });
-  
-  if (startTime && endTime && selectedDays.length > 0) {
-    // Vérifier que l'heure de début est avant l'heure de fin
-    if (startTime >= endTime) {
-      alert("L'heure de début doit être avant l'heure de fin.");
-      return;
-    }
-    
-    // Créer un nouveau groupe de temps
-    const newGroup = {
-      id: generateTimeGroupId(),
-      startTime: startTime,
-      endTime: endTime,
-      days: selectedDays
-    };
-    
-    timeGroups.push(newGroup);
-    
-    // Réinitialiser les champs
-    newStartTimeInput.value = '';
-    newEndTimeInput.value = '';
-    daysOfWeek.forEach(day => {
-      const checkbox = document.getElementById(`day-${day}`);
-      if (checkbox) {
-        checkbox.checked = false;
-      }
-    });
-    
-    renderTimeGroups();
-    
-    // Enregistrer automatiquement
-    saveData();
-  } else {
-    alert("Veuillez sélectionner au moins un jour et définir les heures de début et de fin.");
-  }
-}
-
-// Convertir les groupes de temps en format de planning pour le background script
-function convertToScheduleFormat() {
+// Fonction utilitaire pour convertir les groupes de temps en format de planning
+function convertToScheduleFormat(timeGroups) {
   const schedule = {
     monday: [],
     tuesday: [],
@@ -385,6 +57,8 @@ function convertToScheduleFormat() {
     saturday: [],
     sunday: []
   };
+  
+  if (!timeGroups) return schedule;
   
   timeGroups.forEach(group => {
     group.days.forEach(day => {
@@ -405,97 +79,162 @@ function convertToScheduleFormat() {
   return schedule;
 }
 
-// Sauvegarder les données
-function saveData() {
-  // Convertir au format attendu par le background script
-  const schedule = convertToScheduleFormat();
+// Fonction pour migrer l'ancien format de planning
+function migrateOldScheduleFormat(schedule) {
+  const timeGroups = [];
+  let groupId = 1;
   
-  chrome.storage.local.set({ sites, timeGroups, schedule }, () => {
-    // Afficher un petit indicateur visuel temporaire
-    const saveIndicator = document.createElement('div');
-    saveIndicator.classList.add('save-indicator');
-    saveIndicator.innerHTML = '<div class="save-dot"></div>';
-    
-    document.body.appendChild(saveIndicator);
-    
-    setTimeout(() => {
-      // Animation de disparition
-      saveIndicator.style.opacity = '0';
-      setTimeout(() => {
-        document.body.removeChild(saveIndicator);
-      }, 300);
-    }, 700);
-    
-    // Vérifier l'onglet actuel après la sauvegarde
-    checkCurrentTab(schedule);
+  for (const day in schedule) {
+    if (schedule.hasOwnProperty(day) && schedule[day].length > 0) {
+      schedule[day].forEach(timeRange => {
+        timeGroups.push({
+          id: `group-${groupId++}`,
+          days: [day],
+          startTime: timeRange.start,
+          endTime: timeRange.end
+        });
+      });
+    }
+  }
+  
+  return timeGroups;
+}
+
+// Fonction pour obtenir l'utilisation quotidienne
+function getDailyUsage() {
+  return new Promise(async (resolve) => {
+    const result = await loadData();
+    resolve(result.dailyUsage || {});
   });
 }
 
-// Vérifier l'onglet actuel par rapport aux règles de blocage
-function checkCurrentTab(schedule) {
-  // Récupérer l'onglet actif
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (tabs && tabs.length > 0 && tabs[0].url) {
-      const currentTab = tabs[0];
-      
-      // Vérifier si l'heure actuelle est dans une période de blocage
-      const now = new Date();
-      const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-      const today = days[now.getDay()];
-      
-      // Obtenir le planning pour aujourd'hui
-      const todaySchedule = schedule[today] || [];
-      
-      if (todaySchedule.length > 0) {
-        const currentHour = now.getHours();
-        const currentMinute = now.getMinutes();
-        const currentTimeMinutes = currentHour * 60 + currentMinute;
-        
-        // Vérifier si l'heure actuelle est dans une des plages horaires
-        const isBlockedNow = todaySchedule.some(timeRange => {
-          const [startHour, startMinute] = timeRange.start.split(':').map(Number);
-          const [endHour, endMinute] = timeRange.end.split(':').map(Number);
+// Fonction pour incrémenter l'utilisation du domaine actuel
+function incrementCurrentDomainUsage() {
+  return new Promise(async (resolve) => {
+    const result = await loadData();
+    const sites = result.sites || [];
+    
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs && tabs.length > 0 && tabs[0].url) {
+        try {
+          const url = new URL(tabs[0].url);
+          const hostname = url.hostname;
           
-          const startTimeMinutes = startHour * 60 + startMinute;
-          const endTimeMinutes = endHour * 60 + endMinute;
-          
-          return currentTimeMinutes >= startTimeMinutes && currentTimeMinutes <= endTimeMinutes;
-        });
-        
-        // Si nous sommes dans une période de blocage, vérifier l'URL
-        if (isBlockedNow) {
-          try {
-            const url = new URL(currentTab.url);
-            const hostname = url.hostname;
-            
-            // Vérifier si le site est dans la liste des sites bloqués
-            const isBlocked = sites.some(site => {
-              if (site.startsWith('*.')) {
-                const domain = site.substring(2);
-                return hostname.endsWith(domain);
-              } else {
-                return hostname === site || hostname.endsWith('.' + site);
-              }
-            });
-            
-            // Si le site est bloqué, fermer la popup et rediriger l'onglet
-            if (isBlocked && !currentTab.url.includes(chrome.runtime.id)) {
-              // Fermer la popup
-              window.close();
-              
-              // Rediriger vers la page de blocage
-              chrome.tabs.update(currentTab.id, { url: chrome.runtime.getURL('blocked.html') });
+          if (sites.includes(hostname) || sites.some(site => {
+            if (site.startsWith('*.')) {
+              const domain = site.substring(2);
+              return hostname.endsWith(domain);
+            } else {
+              return hostname.endsWith('.' + site);
             }
-          } catch (e) {
-            console.error('Erreur lors de la vérification de l\'URL:', e);
+          })) {
+            const dateKey = getCurrentDateKey();
+            
+            chrome.storage.local.get(['dailyUsage'], (data) => {
+              const dailyUsage = data.dailyUsage || {};
+              
+              if (!dailyUsage[dateKey]) {
+                dailyUsage[dateKey] = {};
+              }
+              
+              if (!dailyUsage[dateKey][hostname]) {
+                dailyUsage[dateKey][hostname] = 0;
+              }
+              
+              dailyUsage[dateKey][hostname] += 1;
+              
+              chrome.storage.local.set({ dailyUsage }, () => {
+                resolve(dailyUsage);
+              });
+            });
+          } else {
+            resolve(null);
+          }
+        } catch (e) {
+          console.error('Erreur lors de la vérification de l\'URL:', e);
+          resolve(null);
+        }
+      } else {
+        resolve(null);
+      }
+    });
+  });
+}
+
+// Fonction pour vérifier l'onglet actuel
+function checkCurrentTab(schedule, sites) {
+  return new Promise((resolve) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+      if (tabs && tabs.length > 0 && tabs[0].url) {
+        const currentTab = tabs[0];
+        
+        // Vérifier si l'heure actuelle est dans une période de blocage
+        const now = new Date();
+        const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        const today = days[now.getDay()];
+        
+        // Obtenir le planning pour aujourd'hui
+        const todaySchedule = schedule[today] || [];
+        
+        if (todaySchedule.length > 0) {
+          const currentHour = now.getHours();
+          const currentMinute = now.getMinutes();
+          const currentTimeMinutes = currentHour * 60 + currentMinute;
+          
+          // Vérifier si l'heure actuelle est dans une des plages horaires
+          const isBlockedNow = todaySchedule.some(timeRange => {
+            const [startHour, startMinute] = timeRange.start.split(':').map(Number);
+            const [endHour, endMinute] = timeRange.end.split(':').map(Number);
+            
+            const startTimeMinutes = startHour * 60 + startMinute;
+            const endTimeMinutes = endHour * 60 + endMinute;
+            
+            return currentTimeMinutes >= startTimeMinutes && currentTimeMinutes <= endTimeMinutes;
+          });
+          
+          // Si nous sommes dans une période de blocage, vérifier l'URL
+          if (isBlockedNow) {
+            try {
+              const url = new URL(currentTab.url);
+              const hostname = url.hostname;
+              
+              // Vérifier si le site est dans la liste des sites bloqués
+              const isBlocked = sites.some(site => {
+                if (site.startsWith('*.')) {
+                  const domain = site.substring(2);
+                  return hostname.endsWith(domain);
+                } else {
+                  return hostname === site || hostname.endsWith('.' + site);
+                }
+              });
+              
+              // Si le site est bloqué, vérifier également la limite de temps quotidienne
+              if (isBlocked && !currentTab.url.includes(chrome.runtime.id)) {
+                // Utiliser la fonction centralisée pour calculer le temps d'utilisation
+                const usageInfo = await calculateTotalUsageTime();
+                
+                // Si aucune limite de temps n'est définie ou si la limite est atteinte, bloquer le site
+                if (usageInfo.maxDailyAccess === null || usageInfo.isLimitExceeded) {
+                  // Fermer la popup
+                  window.close();
+                  
+                  // Rediriger vers la page de blocage
+                  chrome.tabs.update(currentTab.id, { url: chrome.runtime.getURL(`blocked.html?domain=${hostname}`) });
+                }
+                // Sinon, ne pas bloquer car le temps n'est pas encore écoulé
+              }
+            } catch (e) {
+              console.error('Erreur lors de la vérification de l\'URL:', e);
+            }
           }
         }
       }
-    }
+      resolve();
+    });
   });
 }
 
-// Extraire le nom de domaine de l'URL actuelle
+// Fonction pour obtenir le domaine de l'onglet actuel
 function getCurrentTabDomain() {
   return new Promise((resolve) => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -519,62 +258,514 @@ function getCurrentTabDomain() {
   });
 }
 
-// Ajouter le site actuel à la liste des sites bloqués
-async function addCurrentSite() {
-  const domain = await getCurrentTabDomain();
-  
-  if (domain) {
-    // Vérifier si le site n'est pas déjà dans la liste
-    if (!sites.includes(domain)) {
-      sites.push(domain);
-      renderSitesList();
+// Fonction pour ajouter un site
+function addSite(siteValue) {
+  return new Promise(async (resolve) => {
+    const result = await loadData();
+    const sites = result.sites || [];
+    const timeGroups = result.timeGroups || [];
+    const maxDailyAccess = result.maxDailyAccess;
+    
+    if (siteValue && !sites.includes(siteValue)) {
+      const newSites = [...sites, siteValue];
+      const schedule = convertToScheduleFormat(timeGroups);
       
-      // Afficher un message de confirmation
-      const message = document.createElement('div');
-      message.textContent = `${domain} ajouté à la liste`;
-      message.style.cssText = 'position: fixed; top: 16px; right: 16px; background-color: #48bb78; color: white; padding: 8px 16px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-size: 14px;';
+      await saveData({ 
+        sites: newSites, 
+        timeGroups, 
+        schedule, 
+        maxDailyAccess 
+      });
       
-      document.body.appendChild(message);
-      
-      setTimeout(() => {
-        document.body.removeChild(message);
-      }, 2000);
+      resolve(newSites);
     } else {
-      // Afficher un message si le site est déjà dans la liste
-      const message = document.createElement('div');
-      message.textContent = `${domain} est déjà dans la liste`;
-      message.style.cssText = 'position: fixed; top: 16px; right: 16px; background-color: #f56565; color: white; padding: 8px 16px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-size: 14px;';
-      
-      document.body.appendChild(message);
-      
-      setTimeout(() => {
-        document.body.removeChild(message);
-      }, 2000);
+      resolve(sites);
     }
+  });
+}
+
+// Fonction pour supprimer un site
+function removeSite(index) {
+  return new Promise(async (resolve) => {
+    const result = await loadData();
+    const sites = result.sites || [];
+    const timeGroups = result.timeGroups || [];
+    const maxDailyAccess = result.maxDailyAccess;
+    
+    const newSites = [...sites];
+    newSites.splice(index, 1);
+    
+    const schedule = convertToScheduleFormat(timeGroups);
+    
+    await saveData({ 
+      sites: newSites, 
+      timeGroups, 
+      schedule, 
+      maxDailyAccess 
+    });
+    
+    resolve(newSites);
+  });
+}
+
+// Classe principale de l'application
+class App {
+  constructor() {
+    // Éléments DOM
+    this.newSiteInput = document.getElementById('new-site');
+    this.addSiteButton = document.getElementById('add-site');
+    this.addCurrentSiteButton = document.getElementById('add-current-site');
+    this.sitesList = document.getElementById('sites-list');
+    this.timeGroupsContainer = document.getElementById('time-groups-container');
+    this.newStartTimeInput = document.getElementById('new-start-time');
+    this.newEndTimeInput = document.getElementById('new-end-time');
+    this.addTimeGroupButton = document.getElementById('add-time-group');
+    this.updateTimeGroupButton = document.getElementById('update-time-group');
+    this.cancelEditButton = document.getElementById('cancel-edit');
+    this.editorTitleElement = document.getElementById('editor-title');
+    this.editGroupIdInput = document.getElementById('edit-group-id');
+    this.maxDailyAccessInput = document.getElementById('max-daily-access');
+    this.usageDisplayElement = document.getElementById('usage-display');
+    
+    // Données de l'application
+    this.sites = [];
+    this.timeGroups = [];
+    this.maxDailyAccess = null;
+    
+    // Initialiser les composants
+    this.initComponents();
+    
+    // Charger les données
+    this.loadData();
+    
+    // Mettre à jour l'affichage du temps d'utilisation fréquemment
+    setInterval(() => this.updateUsageDisplay(), 1000);
+  }
+  
+  initComponents() {
+    // Ajouter des écouteurs d'événements pour les sites
+    this.addSiteButton.addEventListener('click', () => this.handleAddSite());
+    this.newSiteInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        this.handleAddSite();
+      }
+    });
+    
+    this.addCurrentSiteButton.addEventListener('click', () => this.handleAddCurrentSite());
+    
+    // Ajouter des écouteurs d'événements pour les groupes de temps
+    this.addTimeGroupButton.addEventListener('click', () => this.handleAddTimeGroup());
+    this.updateTimeGroupButton.addEventListener('click', () => this.handleUpdateTimeGroup());
+    this.cancelEditButton.addEventListener('click', () => this.handleCancelEdit());
+    
+    // Ajouter un écouteur d'événement pour le temps d'accès quotidien
+    this.maxDailyAccessInput.addEventListener('change', () => this.handleMaxDailyAccessChange());
+    
+    // Ajouter des écouteurs d'événements pour les mises à jour de stockage
+    chrome.storage.onChanged.addListener((changes) => {
+      this.handleStorageChanges(changes);
+    });
+  }
+  
+  async loadData() {
+    const result = await loadData();
+    
+    if (result.sites) {
+      this.sites = result.sites;
+    } else {
+      this.sites = [];
+    }
+    
+    if (result.schedule && !result.timeGroups) {
+      this.timeGroups = migrateOldScheduleFormat(result.schedule);
+    } else if (result.timeGroups) {
+      this.timeGroups = result.timeGroups;
+    } else {
+      this.timeGroups = [];
+    }
+    
+    this.maxDailyAccess = result.maxDailyAccess !== undefined ? result.maxDailyAccess : null;
+    
+    // Mettre à jour l'interface utilisateur
+    this.updateUI();
+    
+    // Vérifier l'onglet actuel
+    const schedule = convertToScheduleFormat(this.timeGroups);
+    await checkCurrentTab(schedule, this.sites);
+    
+    // Incrémenter le temps d'utilisation pour le domaine actuel
+    await incrementCurrentDomainUsage();
+  }
+  
+  async updateUsageDisplay() {
+    const dailyUsage = await getDailyUsage();
+    this.renderUsageDisplay(dailyUsage, this.maxDailyAccess);
+  }
+  
+  renderUsageDisplay(dailyUsage, maxDailyAccess) {
+    const formattedUsage = this.formatUsageDisplay(dailyUsage, maxDailyAccess);
+    
+    if (typeof formattedUsage === 'string') {
+      this.usageDisplayElement.textContent = formattedUsage;
+      this.usageDisplayElement.style.background = '';
+    } else {
+      this.usageDisplayElement.textContent = formattedUsage.text;
+      
+      if (formattedUsage.percentUsed !== null) {
+        const percentColor = formattedUsage.percentUsed >= 90 ? '#FFEBEE' : 
+                            formattedUsage.percentUsed >= 75 ? '#FFF8E1' : '#E8F5E9';
+        this.usageDisplayElement.style.background = percentColor;
+      } else {
+        this.usageDisplayElement.style.background = '';
+      }
+    }
+    
+    // Mettre à jour la valeur de l'input
+    if (maxDailyAccess !== null) {
+      this.maxDailyAccessInput.value = maxDailyAccess;
+    } else {
+      this.maxDailyAccessInput.value = '';
+    }
+  }
+  
+  formatUsageDisplay(dailyUsage, maxDailyAccess) {
+    if (!dailyUsage) return "Pas d'utilisation aujourd'hui";
+    
+    const dateKey = getCurrentDateKey();
+    
+    if (!dailyUsage[dateKey]) {
+      return "Pas d'utilisation aujourd'hui";
+    }
+    
+    const todayUsage = dailyUsage[dateKey];
+    let totalSeconds = 0;
+    
+    for (const domain in todayUsage) {
+      totalSeconds += todayUsage[domain];
+    }
+    
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    
+    if (maxDailyAccess !== null) {
+      const percentUsed = Math.min(100, Math.round((minutes / maxDailyAccess) * 100));
+      return {
+        text: `Temps utilisé: ${minutes}m ${seconds}s/${maxDailyAccess}m`,
+        percentUsed: percentUsed
+      };
+    } else {
+      return {
+        text: `Temps utilisé: ${minutes}m ${seconds}s`,
+        percentUsed: null
+      };
+    }
+  }
+  
+  handleStorageChanges(changes) {
+    let needsUpdate = false;
+    
+    if (changes.sites) {
+      this.sites = changes.sites.newValue;
+      needsUpdate = true;
+    }
+    
+    if (changes.timeGroups) {
+      this.timeGroups = changes.timeGroups.newValue;
+      needsUpdate = true;
+    }
+    
+    if (changes.maxDailyAccess) {
+      this.maxDailyAccess = changes.maxDailyAccess.newValue;
+      needsUpdate = true;
+    }
+    
+    if (needsUpdate) {
+      this.updateUI();
+    }
+    
+    if (changes.dailyUsage) {
+      this.updateUsageDisplay();
+    }
+  }
+  
+  updateUI() {
+    this.renderSitesList();
+    this.renderTimeGroupsList();
+    this.updateUsageDisplay();
+  }
+  
+  renderSitesList() {
+    this.sitesList.innerHTML = '';
+    
+    this.sites.forEach((site, index) => {
+      const li = document.createElement('li');
+      li.className = 'site-item';
+      
+      const siteText = document.createElement('span');
+      siteText.className = 'site-text';
+      siteText.textContent = site;
+      
+      const removeButton = document.createElement('button');
+      removeButton.className = 'remove-site';
+      removeButton.innerHTML = '&times;';
+      removeButton.addEventListener('click', () => this.handleRemoveSite(index));
+      
+      li.appendChild(siteText);
+      li.appendChild(removeButton);
+      
+      this.sitesList.appendChild(li);
+    });
+  }
+  
+  renderTimeGroupsList() {
+    this.timeGroupsContainer.innerHTML = '';
+    
+    this.timeGroups.forEach(group => {
+      const groupElement = document.createElement('div');
+      groupElement.className = 'time-group';
+      groupElement.dataset.id = group.id;
+      
+      const daysText = this.formatDays(group.days);
+      const timeText = `${group.startTime} - ${group.endTime}`;
+      
+      groupElement.innerHTML = `
+        <div class="time-group-info">
+          <div class="time-group-days">${daysText}</div>
+          <div class="time-group-time">${timeText}</div>
+        </div>
+        <div class="time-group-actions">
+          <button class="edit-time-group"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> Modifier</button>
+          <button class="delete-time-group"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg> Supprimer</button>
+        </div>
+      `;
+      
+      const editButton = groupElement.querySelector('.edit-time-group');
+      const deleteButton = groupElement.querySelector('.delete-time-group');
+      
+      editButton.addEventListener('click', () => this.startEditingTimeGroup(group.id));
+      deleteButton.addEventListener('click', () => this.handleDeleteTimeGroup(group.id));
+      
+      this.timeGroupsContainer.appendChild(groupElement);
+    });
+  }
+  
+  formatDays(days) {
+    const dayNames = {
+      monday: 'Lun',
+      tuesday: 'Mar',
+      wednesday: 'Mer',
+      thursday: 'Jeu',
+      friday: 'Ven',
+      saturday: 'Sam',
+      sunday: 'Dim'
+    };
+    
+    return days.map(day => dayNames[day]).join(', ');
+  }
+  
+  async handleAddSite() {
+    const siteValue = this.newSiteInput.value.trim();
+    if (siteValue) {
+      await addSite(siteValue);
+      this.newSiteInput.value = '';
+      this.newSiteInput.focus();
+    }
+  }
+  
+  async handleAddCurrentSite() {
+    const domain = await getCurrentTabDomain();
+    if (domain) {
+      await addSite(domain);
+    }
+  }
+  
+  async handleRemoveSite(index) {
+    await removeSite(index);
+  }
+  
+  handleAddTimeGroup() {
+    const selectedDays = this.getSelectedDays();
+    const startTime = this.newStartTimeInput.value;
+    const endTime = this.newEndTimeInput.value;
+    
+    if (selectedDays.length === 0 || !startTime || !endTime) {
+      alert('Veuillez sélectionner au moins un jour et définir les heures de début et de fin.');
+      return;
+    }
+    
+    this.addTimeGroup(selectedDays, startTime, endTime);
+  }
+  
+  async addTimeGroup(days, startTime, endTime) {
+    const result = await loadData();
+    let timeGroups = result.timeGroups || [];
+    const sites = result.sites || [];
+    const maxDailyAccess = result.maxDailyAccess;
+    
+    const newGroup = {
+      id: `group-${Date.now()}`,
+      days,
+      startTime,
+      endTime
+    };
+    
+    timeGroups = [...timeGroups, newGroup];
+    const schedule = convertToScheduleFormat(timeGroups);
+    
+    await saveData({
+      sites,
+      timeGroups,
+      schedule,
+      maxDailyAccess
+    });
+    
+    this.resetTimeGroupForm();
+  }
+  
+  async handleUpdateTimeGroup() {
+    const groupId = this.editGroupIdInput.value;
+    const selectedDays = this.getSelectedDays();
+    const startTime = this.newStartTimeInput.value;
+    const endTime = this.newEndTimeInput.value;
+    
+    if (selectedDays.length === 0 || !startTime || !endTime) {
+      alert('Veuillez sélectionner au moins un jour et définir les heures de début et de fin.');
+      return;
+    }
+    
+    const result = await loadData();
+    let timeGroups = result.timeGroups || [];
+    const sites = result.sites || [];
+    const maxDailyAccess = result.maxDailyAccess;
+    
+    const updatedGroups = timeGroups.map(group => {
+      if (group.id === groupId) {
+        return {
+          ...group,
+          days: selectedDays,
+          startTime,
+          endTime
+        };
+      }
+      return group;
+    });
+    
+    const schedule = convertToScheduleFormat(updatedGroups);
+    
+    await saveData({
+      sites,
+      timeGroups: updatedGroups,
+      schedule,
+      maxDailyAccess
+    });
+    
+    this.resetTimeGroupForm();
+  }
+  
+  async handleDeleteTimeGroup(groupId) {
+    const result = await loadData();
+    let timeGroups = result.timeGroups || [];
+    const sites = result.sites || [];
+    const maxDailyAccess = result.maxDailyAccess;
+    
+    const updatedGroups = timeGroups.filter(group => group.id !== groupId);
+    const schedule = convertToScheduleFormat(updatedGroups);
+    
+    await saveData({
+      sites,
+      timeGroups: updatedGroups,
+      schedule,
+      maxDailyAccess
+    });
+  }
+  
+  handleCancelEdit() {
+    this.resetTimeGroupForm();
+  }
+  
+  async handleMaxDailyAccessChange() {
+    const maxDailyValue = this.maxDailyAccessInput.value.trim();
+    
+    const result = await loadData();
+    const sites = result.sites || [];
+    const timeGroups = result.timeGroups || [];
+    
+    const maxDailyAccess = maxDailyValue === '' ? null : (isNaN(parseInt(maxDailyValue)) ? null : parseInt(maxDailyValue));
+    const schedule = convertToScheduleFormat(timeGroups);
+    
+    await saveData({ 
+      sites, 
+      timeGroups, 
+      schedule, 
+      maxDailyAccess 
+    });
+  }
+  
+  startEditingTimeGroup(groupId) {
+    const groupToEdit = this.timeGroups.find(group => group.id === groupId);
+    if (groupToEdit) {
+      // Mettre à jour le titre
+      this.editorTitleElement.textContent = 'Modifier une plage horaire';
+      
+      // Sélectionner les jours
+      this.clearSelectedDays();
+      groupToEdit.days.forEach(day => {
+        const checkbox = document.getElementById(`day-${day}`);
+        if (checkbox) checkbox.checked = true;
+      });
+      
+      // Définir les heures
+      this.newStartTimeInput.value = groupToEdit.startTime;
+      this.newEndTimeInput.value = groupToEdit.endTime;
+      
+      // Stocker l'ID du groupe en cours d'édition
+      this.editGroupIdInput.value = groupId;
+      
+      // Afficher les boutons appropriés
+      this.addTimeGroupButton.style.display = 'none';
+      this.updateTimeGroupButton.style.display = 'inline-block';
+      this.cancelEditButton.style.display = 'inline-block';
+    }
+  }
+  
+  resetTimeGroupForm() {
+    // Réinitialiser le titre
+    this.editorTitleElement.textContent = 'Ajouter une nouvelle plage horaire';
+    
+    // Décocher tous les jours
+    this.clearSelectedDays();
+    
+    // Réinitialiser les heures
+    this.newStartTimeInput.value = '';
+    this.newEndTimeInput.value = '';
+    
+    // Effacer l'ID du groupe en cours d'édition
+    this.editGroupIdInput.value = '';
+    
+    // Afficher les boutons appropriés
+    this.addTimeGroupButton.style.display = 'inline-block';
+    this.updateTimeGroupButton.style.display = 'none';
+    this.cancelEditButton.style.display = 'none';
+  }
+  
+  getSelectedDays() {
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    return days.filter(day => {
+      const checkbox = document.getElementById(`day-${day}`);
+      return checkbox && checkbox.checked;
+    });
+  }
+  
+  clearSelectedDays() {
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    days.forEach(day => {
+      const checkbox = document.getElementById(`day-${day}`);
+      if (checkbox) checkbox.checked = false;
+    });
   }
 }
 
-// Événements
-window.addEventListener('DOMContentLoaded', loadData);
-
-addSiteButton.addEventListener('click', addSite);
-
-addCurrentSiteButton.addEventListener('click', addCurrentSite);
-
-newSiteInput.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') {
-    addSite();
-  }
-});
-
-addTimeGroupButton.addEventListener('click', addTimeGroup);
-
-updateTimeGroupButton.addEventListener('click', updateTimeGroup);
-
-cancelEditButton.addEventListener('click', resetTimeGroupEditor);
-
-// Le bouton saveButton n'est plus nécessaire car l'enregistrement est automatique
-
-// Définir des valeurs par défaut pour les champs d'heure
-newStartTimeInput.value = '09:00';
-newEndTimeInput.value = '17:00';
+// Initialiser l'application lorsque le DOM est chargé
+document.addEventListener('DOMContentLoaded', () => {
+  new App();
+}); 
